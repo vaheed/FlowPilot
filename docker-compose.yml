@@ -1,0 +1,59 @@
+services:
+  kafka:
+    image: apache/kafka:3.7.2
+    hostname: kafka
+    container_name: kafka
+    environment:
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_NODE_ID: "1"
+      KAFKA_CLUSTER_ID: "my-cluster-id-1234"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
+      KAFKA_LOG_DIRS: "/var/lib/kafka/data"
+      KAFKA_CONTROLLER_LOG_DIR: "/var/lib/kafka/cluster-data"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_PROCESSING_GUARANTEE: "at_least_once"
+      KAFKA_NUM_PARTITIONS: "3"
+      KAFKA_DEFAULT_REPLICATION_FACTOR: "1"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_LOG_RETENTION_HOURS: "24"
+      KAFKA_LOG_SEGMENT_BYTES: "1073741824"
+      KAFKA_OFFSETS_TOPIC_NUM_PARTITIONS: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_LOG_RETENTION_BYTES: "-1"
+    volumes:
+      - ./kafka-data:/var/lib/kafka/data
+      - ./kafka-cluster-data:/var/lib/kafka/cluster-data
+
+  clickhouse:
+    image: clickhouse:lts
+    hostname: clickhouse
+    container_name: clickhouse
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    environment:
+      CLICKHOUSE_MAX_MEMORY_USAGE: "2000000000"
+      CLICKHOUSE_USE_UNCOMPRESSED_CACHES: "1"
+      CLICKHOUSE_USER: "admin"
+      CLICKHOUSE_PASSWORD: "secure_password"
+      CLICKHOUSE_DEFAULT_PROFILE: "default"
+      CLICKHOUSE_LOG_LEVEL: "information"
+    volumes:
+      - ./clickhouse-data:/var/lib/clickhouse
+      - ./configs/clickhouse-init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  nfacctd:
+    image: pmacct/nfacctd:latest
+    hostname: nfacctd
+    container_name: nfacctd
+    ports:
+      - "2055:2055/udp"
+    volumes:
+      - ./configs/nfacctd.conf:/etc/pmacct/nfacctd.conf
+    depends_on:
+      - kafka
